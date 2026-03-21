@@ -232,26 +232,45 @@ router.delete('/users/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
 
-    // Proteggi l'account admin principale
     const targetUser = await prisma.user.findUnique({ where: { id: userId } });
-    if (targetUser && targetUser.username === 'admin' && req.user.username !== 'admin') {
-      return res.status(403).json({
-        error: 'Solo l\'account admin principale può eliminare questo utente'
+    if (!targetUser) return res.status(404).json({ error: 'Utente non trovato' });
+
+    // Proteggi l'account admin principale
+    if (targetUser.username === 'admin' && req.user.username !== 'admin') {
+      return res.status(403).json({ error: 'Solo l\'account admin principale può eliminare questo utente' });
+    }
+
+    // Rimborsa bet pending
+    const pendingBets = await prisma.betEntry.findMany({
+      where: { userId, status: 'PENDING' },
+    });
+    for (const bet of pendingBets) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { balance: { increment: bet.amount } },
       });
     }
 
-    const activeBets = await prisma.betEntry.count({ where: { userId, status: 'PENDING' } });
-    if (activeBets > 0) {
-      return res.status(400).json({ error: 'L\'utente ha scommesse attive. Risolvi prima i market.' });
-    }
+    // Elimina in cascata nell'ordine corretto
+    await prisma.notificationRecipient.deleteMany({ where: { userId } });
+    await prisma.activityLog.deleteMany({ where: { userId } });
+    await prisma.transaction.deleteMany({ where: { userId } });
+    await prisma.betEntry.deleteMany({ where: { userId } });
+    await prisma.comment.deleteMany({ where: { userId } });
     await prisma.user.delete({ where: { id: userId } });
+
     await prisma.activityLog.create({
-      data: { userId: req.user.id, action: 'USER_DELETED', metadata: JSON.stringify({ deletedUserId: userId }) },
+      data: {
+        userId: req.user.id,
+        action: 'USER_DELETED',
+        metadata: JSON.stringify({ deletedUserId: userId, username: targetUser.username }),
+      },
     });
-    res.json({ message: 'Utente eliminato' });
+
+    res.json({ success: true, message: 'Utente eliminato' });
   } catch (err) {
     console.error('Admin delete user error:', err);
-    res.status(500).json({ error: 'Errore interno del server' });
+    res.status(500).json({ error: 'Errore interno del server', detail: err.message });
   }
 });
 
