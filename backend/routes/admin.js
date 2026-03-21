@@ -235,21 +235,47 @@ router.delete('/users/:id', async (req, res) => {
     const targetUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!targetUser) return res.status(404).json({ error: 'Utente non trovato' });
 
-    // Proteggi l'account admin principale
     if (targetUser.username === 'admin' && req.user.username !== 'admin') {
       return res.status(403).json({ error: 'Solo l\'account admin principale può eliminare questo utente' });
     }
 
-    // Rimborsa bet pending
-    const pendingBets = await prisma.betEntry.findMany({
-      where: { userId, status: 'PENDING' },
+    // Trova tutti i market creati dall'utente
+    const userMarkets = await prisma.market.findMany({
+      where: { createdBy: userId },
+      select: { id: true },
     });
-    for (const bet of pendingBets) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { balance: { increment: bet.amount } },
-      });
+    const marketIds = userMarkets.map(m => m.id);
+
+    // Elimina tutto collegato ai market dell'utente
+    if (marketIds.length > 0) {
+      await prisma.betEntry.deleteMany({ where: { marketId: { in: marketIds } } });
+      await prisma.comment.deleteMany({ where: { marketId: { in: marketIds } } });
+      await prisma.marketOption.deleteMany({ where: { marketId: { in: marketIds } } });
+      await prisma.market.deleteMany({ where: { id: { in: marketIds } } });
     }
+
+    // Elimina tutto collegato all'utente
+    await prisma.notificationRecipient.deleteMany({ where: { userId } });
+    await prisma.activityLog.deleteMany({ where: { userId } });
+    await prisma.transaction.deleteMany({ where: { userId } });
+    await prisma.betEntry.deleteMany({ where: { userId } });
+    await prisma.comment.deleteMany({ where: { userId } });
+    await prisma.user.delete({ where: { id: userId } });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'USER_DELETED',
+        metadata: JSON.stringify({ deletedUserId: userId, username: targetUser.username }),
+      },
+    });
+
+    res.json({ success: true, message: 'Utente eliminato' });
+  } catch (err) {
+    console.error('Admin delete user error:', err);
+    res.status(500).json({ error: 'Errore interno del server', detail: err.message });
+  }
+});
 
     // Elimina in cascata nell'ordine corretto
     await prisma.notificationRecipient.deleteMany({ where: { userId } });
