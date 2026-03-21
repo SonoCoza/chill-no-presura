@@ -8,6 +8,10 @@ import { getUploadUrl } from '../utils/api';
 import { formatCurrency, formatDate, formatRelativeTime } from '../utils/format';
 import DateTimePicker from '../components/ui/DateTimePicker';
 import OnlineBadge from '../components/ui/OnlineBadge';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
+import { CustomToggle } from '../components/ui/CustomToggle';
+import { CustomFileUpload } from '../components/ui/CustomFileUpload';
+import { GifPicker } from '../components/ui/GifPicker';
 import usePresence from '../hooks/usePresence';
 import useAdminBalanceSync from '../hooks/useAdminBalanceSync';
 import './AdminPage.css';
@@ -152,10 +156,11 @@ function UsersTab() {
               </div>
             </div>
             <div className="form-row">
-              <label className="checkbox-label">
-                <input type="checkbox" checked={createForm.isAdmin} onChange={e => setCreateForm(p => ({ ...p, isAdmin: e.target.checked }))} />
-                Admin
-              </label>
+              <CustomCheckbox
+                checked={createForm.isAdmin}
+                onChange={e => setCreateForm(p => ({ ...p, isAdmin: e.target.checked }))}
+                label="Admin"
+              />
               <button className="btn-primary" onClick={handleCreateUser}>Crea</button>
             </div>
 
@@ -189,6 +194,8 @@ function UsersTab() {
                 <OnlineBadge userId={u.id} size="sm" />
                 <div>
                   <strong>{u.displayName}</strong>
+                  {u.username === 'admin' && <span className="tag tag-super-admin" style={{ marginLeft: 6, fontSize: 9 }}>SUPER ADMIN</span>}
+                  {u.isAdmin && u.username !== 'admin' && <span className="tag tag-admin-green" style={{ marginLeft: 6, fontSize: 9 }}>ADMIN</span>}
                   <small className="text-secondary" style={{ display: 'block' }}>@{u.username}</small>
                 </div>
               </span>
@@ -583,7 +590,11 @@ function MarketsTab() {
             </div>
             <div className="form-group">
               <label>Immagine</label>
-              <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} />
+              <CustomFileUpload
+                onFile={(file) => setImageFile(file)}
+                accept="image/*"
+                preview={imageFile ? URL.createObjectURL(imageFile) : null}
+              />
             </div>
             <div className="form-group">
               <label>Opzioni</label>
@@ -1008,27 +1019,38 @@ function DashboardTab() {
 
 // ---- SETTINGS TAB ----
 function SettingsTab() {
-  const [configs, setConfigs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState(null); // null = loading
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    api.get('/admin/config').then(({ data }) => {
-      setConfigs(data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+  // Form state
+  const [siteName, setSiteName] = useState('');
+  const [marketMargin, setMarketMargin] = useState('');
+  const [initialBalance, setInitialBalance] = useState('');
 
-  const updateConfig = (key, value) => {
-    setConfigs(prev => prev.map(c => c.key === key ? { ...c, value } : c));
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await api.get('/admin/config');
+        setConfig(data);
+        setSiteName(data.site_name || 'Chill No Presura');
+        setMarketMargin(data.market_margin || '0.05');
+        setInitialBalance(data.initial_balance || '1000');
+      } catch (err) {
+        setError('Impossibile caricare le impostazioni: ' + (err.response?.data?.error || err.message));
+      }
+    };
+    load();
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const config of configs) {
-        await api.put('/admin/config', { key: config.key, value: config.value });
-      }
+      await api.put('/admin/config', {
+        site_name: siteName,
+        market_margin: marketMargin,
+        initial_balance: initialBalance,
+      });
       toast.success('Impostazioni salvate!');
     } catch (err) {
       toast.error('Errore salvataggio');
@@ -1037,49 +1059,80 @@ function SettingsTab() {
     }
   };
 
-  if (loading) {
+  // Stato loading
+  if (config === null && !error) {
     return (
       <div className="admin-tab">
         <h2>Impostazioni</h2>
         {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 50, marginBottom: 8, borderRadius: 8 }} />)}
+        <p className="text-secondary" style={{ textAlign: 'center', marginTop: 12 }}>Caricamento impostazioni...</p>
       </div>
     );
   }
 
-  const configLabels = {
-    market_margin: { label: 'Margine Mercato (%)', description: 'Percentuale trattenuta dal pool su ogni mercato', type: 'number' },
-    initial_balance: { label: 'Saldo Iniziale (€)', description: 'Saldo assegnato ai nuovi utenti', type: 'number' },
-    site_name: { label: 'Nome Sito', description: 'Nome visualizzato nel sito', type: 'text' },
-  };
+  // Stato errore
+  if (error) {
+    return (
+      <div className="admin-tab">
+        <h2>Impostazioni</h2>
+        <div style={{ padding: 24, textAlign: 'center' }}>
+          <p style={{ color: 'var(--accent-orange)', marginBottom: 12 }}>{error}</p>
+          <button className="btn-primary" onClick={() => window.location.reload()}>Riprova</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-tab">
       <div className="tab-header">
-        <h2>Impostazioni</h2>
+        <h2>Impostazioni Globali</h2>
         <button className="btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Salvando...' : 'Salva'}
+          {saving ? 'Salvataggio...' : 'Salva Impostazioni'}
         </button>
       </div>
 
       <div className="settings-list">
-        {configs.map(config => {
-          const meta = configLabels[config.key] || { label: config.key, description: '', type: 'text' };
-          return (
-            <div key={config.key} className="setting-item">
-              <div className="setting-info">
-                <label className="setting-label">{meta.label}</label>
-                {meta.description && <span className="setting-desc">{meta.description}</span>}
-              </div>
-              <input
-                type={meta.type}
-                value={config.value}
-                onChange={(e) => updateConfig(config.key, e.target.value)}
-                className="setting-input mono"
-                step={meta.type === 'number' ? '0.01' : undefined}
-              />
-            </div>
-          );
-        })}
+        <div className="setting-item">
+          <div className="setting-info">
+            <label className="setting-label">Nome del sito</label>
+            <span className="setting-desc">Nome visualizzato nel sito</span>
+          </div>
+          <input
+            type="text"
+            value={siteName}
+            onChange={(e) => setSiteName(e.target.value)}
+            className="setting-input"
+          />
+        </div>
+        <div className="setting-item">
+          <div className="setting-info">
+            <label className="setting-label">House margin (es. 0.05 = 5%)</label>
+            <span className="setting-desc">Percentuale trattenuta dal pool su ogni mercato</span>
+          </div>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="0.2"
+            value={marketMargin}
+            onChange={(e) => setMarketMargin(e.target.value)}
+            className="setting-input mono"
+          />
+        </div>
+        <div className="setting-item">
+          <div className="setting-info">
+            <label className="setting-label">Saldo iniziale nuovi utenti</label>
+            <span className="setting-desc">Saldo assegnato automaticamente ai nuovi utenti</span>
+          </div>
+          <input
+            type="number"
+            min="0"
+            value={initialBalance}
+            onChange={(e) => setInitialBalance(e.target.value)}
+            className="setting-input mono"
+          />
+        </div>
       </div>
     </div>
   );
@@ -1098,6 +1151,7 @@ function NotificationsTab() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [users, setUsers] = useState([]);
   const [sending, setSending] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
 
   useEffect(() => {
     api.get('/admin/users').then(r => setUsers(r.data)).catch(() => {});
@@ -1177,17 +1231,31 @@ function NotificationsTab() {
       {/* Immagine */}
       <div className="form-group">
         <label>Immagine <span className="text-secondary" style={{ fontWeight: 400, fontSize: 12 }}>(opzionale)</span></label>
-        <input type="text" className="input-field" placeholder="URL immagine o GIF" value={imageUrl} onChange={e => { setImageUrl(e.target.value); setImageFile(null); }} />
-        <span style={{ display: 'block', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, margin: '6px 0' }}>oppure</span>
-        <input type="file" accept="image/*" onChange={e => { setImageFile(e.target.files[0]); setImageUrl(''); }} />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <input type="text" className="input-field" placeholder="URL immagine o GIF" value={imageUrl} onChange={e => { setImageUrl(e.target.value); setImageFile(null); }} style={{ flex: 1 }} />
+          <button type="button" className="btn-gif" onClick={() => setShowGifPicker(true)}>GIF</button>
+        </div>
+        <CustomFileUpload
+          onFile={(file) => { setImageFile(file); setImageUrl(''); }}
+          accept="image/*"
+          preview={imageFile ? URL.createObjectURL(imageFile) : (imageUrl || null)}
+        />
       </div>
+
+      {showGifPicker && (
+        <GifPicker
+          onSelect={(url) => { setImageUrl(url); setImageFile(null); setShowGifPicker(false); }}
+          onClose={() => setShowGifPicker(false)}
+        />
+      )}
 
       {/* Chiusura automatica */}
       <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0 }}>
-          <input type="checkbox" checked={autoClose} onChange={e => setAutoClose(e.target.checked)} />
-          Chiusura automatica
-        </label>
+        <CustomToggle
+          checked={autoClose}
+          onChange={e => setAutoClose(e.target.checked)}
+          label="Chiusura automatica"
+        />
         {autoClose && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input
@@ -1217,13 +1285,15 @@ function NotificationsTab() {
         {!targetAll && (
           <div className="notif-user-select-list">
             {users.map(u => (
-              <label key={u.id} className="notif-user-checkbox">
-                <input
-                  type="checkbox"
+              <div key={u.id} className="notif-user-checkbox" onClick={() => {
+                if (selectedUsers.includes(u.id)) setSelectedUsers(prev => prev.filter(id => id !== u.id));
+                else setSelectedUsers(prev => [...prev, u.id]);
+              }}>
+                <CustomCheckbox
                   checked={selectedUsers.includes(u.id)}
-                  onChange={e => {
-                    if (e.target.checked) setSelectedUsers(prev => [...prev, u.id]);
-                    else setSelectedUsers(prev => prev.filter(id => id !== u.id));
+                  onChange={() => {
+                    if (selectedUsers.includes(u.id)) setSelectedUsers(prev => prev.filter(id => id !== u.id));
+                    else setSelectedUsers(prev => [...prev, u.id]);
                   }}
                 />
                 <span className="notif-user-avatar">
@@ -1237,7 +1307,7 @@ function NotificationsTab() {
                 </span>
                 <span>{u.displayName}</span>
                 <span className="text-secondary" style={{ fontSize: 12 }}>@{u.username}</span>
-              </label>
+              </div>
             ))}
           </div>
         )}

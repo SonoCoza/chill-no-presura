@@ -751,3 +751,15 @@
     height: 200px;
   }
 }
+
+@media (max-width: 768px) {
+  .market-detail {
+    padding: 0 16px;
+  }
+  .market-detail-sidebar {
+    width: 100%;
+  }
+  .market-detail-main {
+    width: 100%;
+  }
+}

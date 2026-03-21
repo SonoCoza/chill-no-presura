@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { getCountdown } from '../utils/format';
 import DateTimePicker from './ui/DateTimePicker';
+import { GifPicker } from './ui/GifPicker';
 import './CreateMarketModal.css';
 
 export default function CreateMarketModal({ isOpen, onClose, onCreated }) {
@@ -198,8 +199,14 @@ export default function CreateMarketModal({ isOpen, onClose, onCreated }) {
               <div className="image-tabs">
                 <button className={`image-tab ${imageTab === 'upload' ? 'active' : ''}`} onClick={() => setImageTab('upload')}>Carica file</button>
                 <button className={`image-tab ${imageTab === 'url' ? 'active' : ''}`} onClick={() => setImageTab('url')}>URL</button>
+                <button className={`image-tab ${imageTab === 'gif' ? 'active' : ''}`} onClick={() => setImageTab('gif')}>GIF Tenor</button>
               </div>
-              {imageTab === 'upload' ? (
+              {imageTab === 'gif' ? (
+                <GifPicker
+                  onSelect={(url) => { handleUrlPreview(url); setImageTab('url'); }}
+                  onClose={() => setImageTab('upload')}
+                />
+              ) : imageTab === 'upload' ? (
                 <div
                   className="drop-zone"
                   ref={dropRef}

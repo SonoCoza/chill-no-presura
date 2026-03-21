@@ -41,6 +41,13 @@ export default function LoginBackground() {
       { x: w() * 0.5, y: h() * 0.1, r: 150, color: 'rgba(181,255,77,0.03)', vx: 0.08, vy: 0.15 },
     ];
 
+    // Pulsing orbs
+    const pulsingOrbs = [
+      { x: 0.15, y: 0.2, r: 120, phase: 0, speed: 0.008, color: 'rgba(181,255,77,' },
+      { x: 0.8,  y: 0.7, r: 160, phase: Math.PI, speed: 0.006, color: 'rgba(139,92,246,' },
+      { x: 0.5,  y: 0.9, r: 100, phase: Math.PI/2, speed: 0.01, color: 'rgba(181,255,77,' },
+    ];
+
     const animate = () => {
       const cw = w();
       const ch = h();
@@ -59,6 +66,21 @@ export default function LoginBackground() {
         ctx.beginPath();
         ctx.arc(blob.x, blob.y, blob.r, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
+        ctx.fill();
+      });
+
+      // Draw pulsing orbs
+      pulsingOrbs.forEach(orb => {
+        orb.phase += orb.speed;
+        const alpha = 0.03 + Math.sin(orb.phase) * 0.02;
+        const x = orb.x * cw;
+        const y = orb.y * ch;
+        const orbGradient = ctx.createRadialGradient(x, y, 0, x, y, orb.r);
+        orbGradient.addColorStop(0, orb.color + alpha + ')');
+        orbGradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = orbGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, orb.r, 0, Math.PI * 2);
         ctx.fill();
       });
 

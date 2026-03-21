@@ -153,11 +153,11 @@ router.put('/config', async (req, res) => {
   }
 });
 
-// --- Users (exclude admins) ---
+// --- Users (ALL users including admins) ---
 router.get('/users', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      where: { isAdmin: false },
+      where: {},
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, username: true, displayName: true, avatarUrl: true,
@@ -231,6 +231,15 @@ router.get('/users/:id/transactions', async (req, res) => {
 router.delete('/users/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
+
+    // Proteggi l'account admin principale
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (targetUser && targetUser.username === 'admin' && req.user.username !== 'admin') {
+      return res.status(403).json({
+        error: 'Solo l\'account admin principale può eliminare questo utente'
+      });
+    }
+
     const activeBets = await prisma.betEntry.count({ where: { userId, status: 'PENDING' } });
     if (activeBets > 0) {
       return res.status(400).json({ error: 'L\'utente ha scommesse attive. Risolvi prima i market.' });
@@ -309,6 +318,14 @@ router.put('/users/:id', async (req, res) => {
     const userId = parseInt(req.params.id);
     const { displayName, isAdmin, balance, resetPassword } = req.body;
 
+    // Proteggi l'account admin principale
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (targetUser && targetUser.username === 'admin' && req.user.username !== 'admin') {
+      return res.status(403).json({
+        error: 'Solo l\'account admin principale può modificare questo utente'
+      });
+    }
+
     const data = {};
     if (displayName !== undefined) data.displayName = displayName;
     if (isAdmin !== undefined) data.isAdmin = isAdmin;
@@ -350,6 +367,15 @@ router.put('/users/:id', async (req, res) => {
 router.put('/users/:id/suspend', async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
+
+    // Proteggi l'account admin principale
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (targetUser && targetUser.username === 'admin' && req.user.username !== 'admin') {
+      return res.status(403).json({
+        error: 'Solo l\'account admin principale può modificare questo utente'
+      });
+    }
+
     const { isSuspended } = req.body;
     const user = await prisma.user.update({
       where: { id: userId },

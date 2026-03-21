@@ -1206,8 +1206,10 @@
     position: static;
     display: flex;
     gap: 4px;
-    padding: 8px;
-    flex-wrap: wrap;
+    padding: 8px 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-sidebar-title {
@@ -1215,11 +1217,16 @@
   }
 
   .admin-sidebar-btn {
-    flex: 1;
+    flex: 0 0 auto;
     min-width: 80px;
     justify-content: center;
-    padding: 8px;
-    font-size: 12px;
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .admin-main {
+    padding: 0 16px;
   }
 
   .table-header,
@@ -1234,12 +1241,41 @@
     display: none;
   }
 
+  .admin-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table td, .admin-table th {
+    white-space: nowrap;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
   .drawer {
     width: 100%;
   }
 
   .user-drawer {
     width: 100%;
+  }
+
+  .modal {
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
   }
 }
 

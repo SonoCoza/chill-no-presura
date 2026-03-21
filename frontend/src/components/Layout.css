@@ -359,6 +359,7 @@
 @media (max-width: 768px) {
   .header-inner {
     padding: 0 16px;
+    gap: 8px;
   }
 
   .desktop-nav {
@@ -381,7 +382,16 @@
     display: none;
   }
 
+  .balance-display {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
   .balance-amount {
     font-size: 13px;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

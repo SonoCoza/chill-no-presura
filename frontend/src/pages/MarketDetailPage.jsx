@@ -9,6 +9,7 @@ import useSocket from '../hooks/useSocket';
 import { formatCurrency, formatOdds, formatRelativeTime, getCountdown, getImpliedProbability } from '../utils/format';
 import { StatusBadge, CountdownTimer } from '../components/MarketCard';
 import DateTimePicker from '../components/ui/DateTimePicker';
+import { GifPicker } from '../components/ui/GifPicker';
 import './MarketDetailPage.css';
 
 function OddsBar({ option, totalPool, isWinner, isResolved, flashing }) {
@@ -185,6 +186,8 @@ function CommentSection({ marketId, comments: initialComments }) {
   const [text, setText] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [gifUrl, setGifUrl] = useState(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const fileInputRef = useRef(null);
@@ -217,19 +220,21 @@ function CommentSection({ marketId, comments: initialComments }) {
   };
 
   const handleSend = async () => {
-    if (!text.trim() && !imageFile) return;
+    if (!text.trim() && !imageFile && !gifUrl) return;
     setSending(true);
     try {
       const formData = new FormData();
       formData.append('marketId', marketId);
       if (text.trim()) formData.append('text', text.trim());
       if (imageFile) formData.append('image', imageFile);
+      if (gifUrl) formData.append('gifUrl', gifUrl);
 
       const { data } = await api.post('/comments', formData);
       setComments(prev => [...prev, data]);
       setText('');
       setImageFile(null);
       setImagePreview(null);
+      setGifUrl(null);
       setTimeout(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (err) {
       toast.error('Errore nell\'invio del commento');
@@ -304,6 +309,12 @@ function CommentSection({ marketId, comments: initialComments }) {
             <button onClick={() => { setImageFile(null); setImagePreview(null); }}>&times;</button>
           </div>
         )}
+        {gifUrl && (
+          <div className="comment-image-preview">
+            <img src={gifUrl} alt="GIF" />
+            <button onClick={() => setGifUrl(null)}>&times;</button>
+          </div>
+        )}
         <div className="comment-input-row">
           <button className="comment-upload-btn" onClick={() => fileInputRef.current?.click()}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -313,6 +324,7 @@ function CommentSection({ marketId, comments: initialComments }) {
             </svg>
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} hidden />
+          <button type="button" className="btn-gif" onClick={() => setShowGifPicker(true)}>GIF</button>
           <input
             type="text"
             value={text}
@@ -321,10 +333,16 @@ function CommentSection({ marketId, comments: initialComments }) {
             className="comment-text-input input-field"
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
-          <button className="comment-send-btn" onClick={handleSend} disabled={sending || (!text.trim() && !imageFile)}>
+          <button className="comment-send-btn" onClick={handleSend} disabled={sending || (!text.trim() && !imageFile && !gifUrl)}>
             Invia
           </button>
         </div>
+        {showGifPicker && (
+          <GifPicker
+            onSelect={(url) => { setGifUrl(url); setShowGifPicker(false); }}
+            onClose={() => setShowGifPicker(false)}
+          />
+        )}
       </div>
     </div>
   );
