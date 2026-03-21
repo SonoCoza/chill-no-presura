@@ -17,6 +17,7 @@ const notificationRoutes = require('./routes/notifications');
 
 const prisma = new PrismaClient();
 const app = express();
+app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
 // Socket.IO setup
