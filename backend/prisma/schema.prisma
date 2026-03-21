@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+}
+
+enum TransactionType {
+  DEPOSIT
+  BET
+  WIN
+  REFUND
+  ADMIN_ADJUST
+}
+
+enum NotificationType {
+  BANNER
+  MODAL
+}
+
+model User {
+  id              Int           @id @default(autoincrement())
+  username        String        @unique
+  displayName     String
+  avatarUrl       String?
+  passwordHash    String
+  tempPassword    String?
+  lastSetPassword String?
+  mustChangePass  Boolean       @default(true)
+  isAdmin         Boolean       @default(false)
+  isSuspended     Boolean       @default(false)
+  balance         Float         @default(0)
+  createdAt       DateTime      @default(now())
+  bets            BetEntry[]
+  comments        Comment[]
+  transactions    Transaction[]
+  activityLogs    ActivityLog[]
+  createdMarkets  Market[]      @relation("MarketCreator")
+}
+
+model Market {
+  id             Int            @id @default(autoincrement())
+  title          String
+  description    String?
+  imageUrl       String?
+  status         MarketStatus   @default(OPEN)
+  closeAt        DateTime?
+  resolvedAt     DateTime?
+  resolvedOption Int?
+  createdBy      Int
+  creatorUser    User           @relation("MarketCreator", fields: [createdBy], references: [id])
+  createdAt      DateTime       @default(now())
+  options        MarketOption[]
+  entries        BetEntry[]
+  comments       Comment[]
+}
+
+model MarketOption {
+  id          Int        @id @default(autoincrement())
+  marketId    Int
+  market      Market     @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  label       String
+  imageUrl    String?
+  odds        Float      @default(2.0)
+  totalStaked Float      @default(0)
+  entries     BetEntry[]
+}
+
+model BetEntry {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id])
+  marketId     Int
+  market       Market    @relation(fields: [marketId], references: [id])
+  optionId     Int
+  option       MarketOption @relation(fields: [optionId], references: [id])
+  amount       Float
+  oddsAtTime   Float
+  potentialWin Float
+  status       BetStatus @default(PENDING)
+  placedAt     DateTime  @default(now())
+}
+
+model Transaction {
+  id          Int             @id @default(autoincrement())
+  userId      Int
+  user        User            @relation(fields: [userId], references: [id])
+  type        TransactionType
+  amount      Float
+  description String?
+  createdAt   DateTime        @default(now())
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  marketId  Int
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  text      String?
+  imageUrl  String?
+  gifUrl    String?
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  metadata  String?
+  createdAt DateTime @default(now())
+}
+
+model Config {
+  key   String @id
+  value String
+}
+
+model Notification {
+  id           Int                     @id @default(autoincrement())
+  type         NotificationType        @default(BANNER)
+  title        String?
+  message      String
+  imageUrl     String?
+  autoClose    Boolean                 @default(true)
+  autoCloseSec Int?
+  targetAll    Boolean                 @default(true)
+  sentBy       Int
+  createdAt    DateTime                @default(now())
+  recipients   NotificationRecipient[]
+}
+
+model NotificationRecipient {
+  id             Int          @id @default(autoincrement())
+  notificationId Int
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         Int
+  readAt         DateTime?
+  dismissedAt    DateTime?
+}

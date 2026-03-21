@@ -1,0 +1,183 @@
+.leaderboard-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Podium */
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  padding: 20px 0;
+}
+
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 140px;
+}
+
+.podium-item.rank-0 {
+  order: 2;
+}
+
+.podium-item.rank-1 {
+  order: 1;
+}
+
+.podium-item.rank-2 {
+  order: 3;
+}
+
+.podium-medal {
+  font-size: 28px;
+}
+
+.rank-0 .podium-medal {
+  font-size: 36px;
+}
+
+.podium-avatar {
+  display: block;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.podium-avatar img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+}
+
+.rank-0 .podium-avatar img {
+  width: 64px;
+  height: 64px;
+}
+
+.podium-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.podium-balance {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.rank-0 .podium-balance {
+  font-size: 20px;
+}
+
+.podium-bar {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  margin-top: 4px;
+}
+
+/* List */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.leaderboard-row:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-hover);
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.lb-rank {
+  width: 28px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.lb-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lb-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lb-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.lb-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lb-username {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.lb-bets {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.lb-balance {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-green);
+  min-width: 100px;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .podium {
+    gap: 6px;
+  }
+
+  .podium-item {
+    width: 100px;
+  }
+
+  .lb-bets {
+    display: none;
+  }
+}

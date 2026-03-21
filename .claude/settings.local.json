@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(brew services:*)",
+      "Bash(docker info:*)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(echo $PATH)",
+      "Bash(ls /Applications/ServBay/bin/pg*)",
+      "Bash(/Applications/ServBay/bin/psql --version)",
+      "Bash(npx prisma:*)",
+      "Bash(node prisma/seed.js)",
+      "Bash(npm install:*)",
+      "Bash(npx vite:*)",
+      "Bash(npm run:*)",
+      "Bash(grep -rn \"title\\\\s*=\" /Users/giovanniciccone/Desktop/port/backend --include=\"*.js\" ! -path \"*/node_modules/*\")",
+      "Bash(grep -rn \"\\\\.title\\\\[\" /Users/giovanniciccone/Desktop/port --include=\"*.js\" --include=\"*.jsx\" ! -path \"*/node_modules/*\")",
+      "Bash(grep -rn title[0] /Users/giovanniciccone/Desktop/port --include=*.js --include=*.jsx)",
+      "Bash(grep -rn title.charAt /Users/giovanniciccone/Desktop/port --include=*.js --include=*.jsx)",
+      "Bash(node -e \":*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npm view:*)",
+      "Bash(find . -name \"*.js\" -path \"*/backend/*\" ! -path \"*/node_modules/*\" -exec grep -l \"require\\\\|module.exports\" {})"
+    ]
+  }
+}

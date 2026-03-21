@@ -1,0 +1,29 @@
+{
+  "name": "chill-no-presura-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "canvas-confetti": "^1.9.3",
+    "date-fns": "^3.6.0",
+    "framer-motion": "^11.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^2.15.0",
+    "socket.io-client": "^4.8.3",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.5.14"
+  }
+}
