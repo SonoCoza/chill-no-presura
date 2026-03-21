@@ -77,11 +77,16 @@ export default function HomePage() {
       ));
     };
 
+    const handleMarketDeleted = ({ marketId }) => {
+      setMarkets(prev => prev.filter(m => m.id !== marketId));
+    };
+
     socket.on('market:created', handleNewMarket);
     socket.on('market:odds_updated', handleOddsUpdated);
     socket.on('market:resolved', handleMarketResolved);
     socket.on('market:closed', handleMarketClosed);
     socket.on('market:updated', handleMarketUpdated);
+    socket.on('market:deleted', handleMarketDeleted);
 
     return () => {
       socket.off('market:created', handleNewMarket);
@@ -89,6 +94,7 @@ export default function HomePage() {
       socket.off('market:resolved', handleMarketResolved);
       socket.off('market:closed', handleMarketClosed);
       socket.off('market:updated', handleMarketUpdated);
+      socket.off('market:deleted', handleMarketDeleted);
     };
   }, [socket]);
 

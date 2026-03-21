@@ -50,8 +50,10 @@ export const GifPicker = ({ onSelect, onClose }) => {
     return () => clearTimeout(timer);
   }, [query, fetchGifs]);
 
+  if (typeof document === 'undefined') return null;
+
   return ReactDOM.createPortal(
-    <div className="gif-picker-overlay" onClick={onClose}>
+    <div className="gif-picker-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="gif-picker" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="gif-picker-header">

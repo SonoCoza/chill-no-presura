@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import confetti from 'canvas-confetti';
@@ -324,7 +324,7 @@ function CommentSection({ marketId, comments: initialComments }) {
             </svg>
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} hidden />
-          <button type="button" className="btn-gif" onClick={() => setShowGifPicker(true)}>GIF</button>
+          <button type="button" className="btn-gif" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowGifPicker(true); }}>GIF</button>
           <input
             type="text"
             value={text}
@@ -348,7 +348,7 @@ function CommentSection({ marketId, comments: initialComments }) {
   );
 }
 
-function EditMarketModal({ market, onClose, onUpdated }) {
+function EditMarketModal({ market, onClose, onUpdated, onDeleted }) {
   const [title, setTitle] = useState(market.title);
   const [description, setDescription] = useState(market.description || '');
   const [imageUrl, setImageUrl] = useState(
@@ -357,6 +357,8 @@ function EditMarketModal({ market, onClose, onUpdated }) {
   const [closeAt, setCloseAt] = useState(market.closeAt || '');
   const [options, setOptions] = useState(market.options?.map(o => ({ id: o.id, label: o.label })) || []);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -377,6 +379,25 @@ function EditMarketModal({ market, onClose, onUpdated }) {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Errore aggiornamento');
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api.delete(`/markets/${market.id}`);
+      toast.success('Pronostico eliminato');
+      onClose();
+      if (onDeleted) onDeleted(market.id);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Errore eliminazione');
+      setConfirmDelete(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -433,6 +454,30 @@ function EditMarketModal({ market, onClose, onUpdated }) {
             {submitting ? 'Salvando...' : 'Salva Modifiche'}
           </button>
         </div>
+
+        {/* Danger Zone — Delete */}
+        <div className="edit-modal-danger-zone">
+          <div className="danger-divider">
+            <span>Zona pericolosa</span>
+          </div>
+          <button
+            type="button"
+            className={`btn-delete-market ${confirmDelete ? 'confirm' : ''}`}
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting
+              ? 'Eliminazione...'
+              : confirmDelete
+                ? 'Conferma eliminazione — clicca di nuovo'
+                : 'Elimina pronostico'}
+          </button>
+          {confirmDelete && (
+            <p className="delete-warning">
+              Questa azione è irreversibile. Tutte le bet saranno rimborsate.
+            </p>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -474,6 +519,7 @@ export default function MarketDetailPage() {
   const [editSecondsRemaining, setEditSecondsRemaining] = useState(0);
   const { socket } = useSocket();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Local canEdit calculation — no extra API call needed
   useEffect(() => {
@@ -730,6 +776,7 @@ export default function MarketDetailPage() {
             market={market}
             onClose={() => setEditModalOpen(false)}
             onUpdated={(updated) => { setMarket(prev => ({ ...prev, ...updated })); }}
+            onDeleted={() => { navigate('/'); }}
           />
         )}
       </AnimatePresence>

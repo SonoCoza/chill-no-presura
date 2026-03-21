@@ -400,41 +400,96 @@ router.post('/:id/resolve', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// Delete market (admin only)
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+// Delete market (admin always, creator within 10 minutes)
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const marketId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const isAdmin = req.user.isAdmin;
+
     const market = await prisma.market.findUnique({
       where: { id: marketId },
       include: { entries: true },
     });
+
     if (!market) return res.status(404).json({ error: 'Market non trovato' });
+
+    // Permissions: admin always, creator within 10 minutes
+    if (!isAdmin) {
+      if (market.createdBy !== userId) {
+        return res.status(403).json({ error: 'Non autorizzato' });
+      }
+      const minutesSinceCreation = (Date.now() - new Date(market.createdAt).getTime()) / 60000;
+      if (minutesSinceCreation > 10) {
+        return res.status(403).json({ error: 'Puoi eliminare solo entro 10 minuti dalla creazione.' });
+      }
+    }
 
     const io = req.io || req.app.get('io');
 
-    // Refund pending bets
+    // 1. Refund PENDING bets to non-admin users
     for (const entry of market.entries) {
       if (entry.status === 'PENDING') {
-        await prisma.user.update({ where: { id: entry.userId }, data: { balance: { increment: entry.amount } } });
-        await prisma.transaction.create({
-          data: { userId: entry.userId, type: 'REFUND', amount: entry.amount, description: `Rimborso: "${market.title}" eliminato` },
+        const betUser = await prisma.user.findUnique({
+          where: { id: entry.userId },
+          select: { isAdmin: true, balance: true },
         });
-        if (io) {
-          const u = await prisma.user.findUnique({ where: { id: entry.userId }, select: { balance: true } });
-          io.to(`user:${entry.userId}`).emit('balance:updated', { newBalance: u.balance, delta: entry.amount, type: 'REFUND', description: 'Rimborso market eliminato' });
-          // Notify admin panel
-          io.to('admin-room').emit('admin:balance_updated', {
-            userId: entry.userId, newBalance: u.balance, delta: entry.amount, type: 'REFUND',
+        if (!betUser?.isAdmin) {
+          const updated = await prisma.user.update({
+            where: { id: entry.userId },
+            data: { balance: { increment: entry.amount } },
+            select: { balance: true },
           });
+          await prisma.transaction.create({
+            data: {
+              userId: entry.userId,
+              type: 'REFUND',
+              amount: entry.amount,
+              description: `Rimborso: "${market.title}" eliminato`,
+            },
+          });
+          if (io) {
+            io.to(`user:${entry.userId}`).emit('balance:updated', {
+              newBalance: updated.balance,
+              delta: entry.amount,
+              type: 'REFUND',
+              description: 'Rimborso market eliminato',
+            });
+            io.to('admin-room').emit('admin:balance_updated', {
+              userId: entry.userId,
+              newBalance: updated.balance,
+              delta: entry.amount,
+              type: 'REFUND',
+            });
+          }
         }
       }
     }
 
+    // 2. Cascade delete in correct order (respects foreign keys)
+    await prisma.betEntry.deleteMany({ where: { marketId } });
+    await prisma.comment.deleteMany({ where: { marketId } });
+    await prisma.marketOption.deleteMany({ where: { marketId } });
     await prisma.market.delete({ where: { id: marketId } });
-    res.json({ message: 'Market eliminato' });
+
+    // Activity log
+    await prisma.activityLog.create({
+      data: {
+        userId,
+        action: 'MARKET_DELETED',
+        metadata: JSON.stringify({ marketId, title: market.title }),
+      },
+    });
+
+    // Notify via WebSocket
+    if (io) {
+      io.to('global').emit('market:deleted', { marketId });
+    }
+
+    res.json({ success: true, message: 'Market eliminato' });
   } catch (err) {
     console.error('Delete market error:', err);
-    res.status(500).json({ error: 'Errore interno del server' });
+    res.status(500).json({ error: 'Errore interno del server', detail: err.message });
   }
 });
 
