@@ -4,15 +4,15 @@
   "description": "Backend for Chill No Presura betting platform",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js",
-    "start": "node server.js",
-    "build": "npx prisma generate && npx prisma migrate deploy",
-    "postinstall": "npx prisma generate",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy",
-    "prisma:push": "prisma db push",
-    "seed": "node prisma/seed.js"
-  },
+  "dev": "nodemon server.js",
+  "start": "npx prisma db push --accept-data-loss && node prisma/seed.js && node server.js",
+  "build": "npx prisma generate",
+  "postinstall": "npx prisma generate",
+  "prisma:generate": "prisma generate",
+  "prisma:migrate": "prisma migrate deploy",
+  "prisma:push": "prisma db push",
+  "seed": "node prisma/seed.js"
+},
   "prisma": {
     "seed": "node prisma/seed.js"
   },
