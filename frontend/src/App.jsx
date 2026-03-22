@@ -12,6 +12,7 @@ import MarketDetailPage from './pages/MarketDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import AdminPage from './pages/AdminPage';
+import RoulettePage from './pages/Roulette/RoulettePage';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route path="/" element={<ProtectedRoute><Layout><HomePage /></Layout></ProtectedRoute>} />
         <Route path="/market/:id" element={<ProtectedRoute><Layout><MarketDetailPage /></Layout></ProtectedRoute>} />
         <Route path="/profile/:id" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
+        <Route path="/roulette" element={<ProtectedRoute><Layout><RoulettePage /></Layout></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Layout><LeaderboardPage /></Layout></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute adminOnly><Layout><AdminPage /></Layout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />

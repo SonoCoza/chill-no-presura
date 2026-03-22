@@ -237,35 +237,77 @@ router.delete('/users/:id', async (req, res) => {
 
     // Proteggi l'account admin principale
     if (targetUser.username === 'admin' && req.user.username !== 'admin') {
-      return res.status(403).json({ error: 'Solo l\'account admin principale può eliminare questo utente' });
+      return res.status(403).json({ error: "Solo l'account admin principale può eliminare questo utente" });
     }
 
-    // Rimborsa bet pending
-    const pendingBets = await prisma.betEntry.findMany({
-      where: { userId, status: 'PENDING' },
+    // 1. Trova tutti i market creati dall'utente
+    const userMarkets = await prisma.market.findMany({
+      where: { createdBy: userId },
+      select: { id: true },
     });
-    for (const bet of pendingBets) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { balance: { increment: bet.amount } },
+    const marketIds = userMarkets.map(m => m.id);
+
+    // 2. Per ogni market: rimborsa bet pending di altri utenti, poi elimina tutto
+    if (marketIds.length > 0) {
+      const pendingBets = await prisma.betEntry.findMany({
+        where: { marketId: { in: marketIds }, status: 'PENDING' },
       });
+      for (const bet of pendingBets) {
+        if (bet.userId !== userId) {
+          const betUser = await prisma.user.findUnique({
+            where: { id: bet.userId },
+            select: { isAdmin: true },
+          });
+          if (!betUser?.isAdmin) {
+            await prisma.user.update({
+              where: { id: bet.userId },
+              data: { balance: { increment: bet.amount } },
+            });
+            await prisma.transaction.create({
+              data: {
+                userId: bet.userId,
+                type: 'REFUND',
+                amount: bet.amount,
+                description: 'Rimborso: account eliminato',
+              },
+            });
+          }
+        }
+      }
+
+      // Elimina tutto collegato ai market dell'utente
+      await prisma.betEntry.deleteMany({ where: { marketId: { in: marketIds } } });
+      await prisma.comment.deleteMany({ where: { marketId: { in: marketIds } } });
+      await prisma.marketOption.deleteMany({ where: { marketId: { in: marketIds } } });
+      await prisma.market.deleteMany({ where: { id: { in: marketIds } } });
     }
 
-    // Elimina in cascata nell'ordine corretto
+    // 3. Elimina tutto collegato all'utente
     await prisma.notificationRecipient.deleteMany({ where: { userId } });
     await prisma.activityLog.deleteMany({ where: { userId } });
     await prisma.transaction.deleteMany({ where: { userId } });
     await prisma.betEntry.deleteMany({ where: { userId } });
     await prisma.comment.deleteMany({ where: { userId } });
+
+    // Roulette data if tables exist
+    try {
+      await prisma.rouletteBet.deleteMany({ where: { userId } });
+      await prisma.rouletteComment.deleteMany({ where: { userId } });
+    } catch { /* tables may not exist yet */ }
+
+    // 4. Finalmente elimina l'utente
     await prisma.user.delete({ where: { id: userId } });
 
-    await prisma.activityLog.create({
-      data: {
-        userId: req.user.id,
-        action: 'USER_DELETED',
-        metadata: JSON.stringify({ deletedUserId: userId, username: targetUser.username }),
-      },
-    });
+    // 5. Log
+    try {
+      await prisma.activityLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'USER_DELETED',
+          metadata: JSON.stringify({ deletedUserId: userId, username: targetUser.username }),
+        },
+      });
+    } catch { /* non bloccare se il log fallisce */ }
 
     res.json({ success: true, message: 'Utente eliminato' });
   } catch (err) {

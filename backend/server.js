@@ -14,6 +14,7 @@ const betRoutes = require('./routes/bets');
 const commentRoutes = require('./routes/comments');
 const adminRoutes = require('./routes/admin');
 const notificationRoutes = require('./routes/notifications');
+const rouletteRoutes = require('./routes/roulette');
 
 const prisma = new PrismaClient();
 const app = express();
@@ -79,6 +80,13 @@ io.on('connection', (socket) => {
     socket.leave(`market:${marketId}`);
   });
 
+  socket.on('roulette:join', () => {
+    socket.join('roulette-room');
+  });
+  socket.on('roulette:leave', () => {
+    socket.leave('roulette-room');
+  });
+
   socket.on('disconnect', () => {
     const userSockets = onlineUsers.get(userId);
     if (userSockets) {
@@ -130,6 +138,7 @@ app.use('/api/bets', betRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/roulette', rouletteRoutes);
 
 // Public stats (no auth)
 app.get('/api/stats', async (req, res) => {

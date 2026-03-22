@@ -33,23 +33,25 @@ enum NotificationType {
 }
 
 model User {
-  id              Int           @id @default(autoincrement())
-  username        String        @unique
-  displayName     String
-  avatarUrl       String?
-  passwordHash    String
-  tempPassword    String?
-  lastSetPassword String?
-  mustChangePass  Boolean       @default(true)
-  isAdmin         Boolean       @default(false)
-  isSuspended     Boolean       @default(false)
-  balance         Float         @default(0)
-  createdAt       DateTime      @default(now())
-  bets            BetEntry[]
-  comments        Comment[]
-  transactions    Transaction[]
-  activityLogs    ActivityLog[]
-  createdMarkets  Market[]      @relation("MarketCreator")
+  id               Int                @id @default(autoincrement())
+  username         String             @unique
+  displayName      String
+  avatarUrl        String?
+  passwordHash     String
+  tempPassword     String?
+  lastSetPassword  String?
+  mustChangePass   Boolean            @default(true)
+  isAdmin          Boolean            @default(false)
+  isSuspended      Boolean            @default(false)
+  balance          Float              @default(0)
+  createdAt        DateTime           @default(now())
+  bets             BetEntry[]
+  comments         Comment[]
+  transactions     Transaction[]
+  activityLogs     ActivityLog[]
+  createdMarkets   Market[]           @relation("MarketCreator")
+  rouletteBets     RouletteBet[]
+  rouletteComments RouletteComment[]
 }
 
 model Market {
@@ -152,4 +154,87 @@ model NotificationRecipient {
   userId         Int
   readAt         DateTime?
   dismissedAt    DateTime?
+}
+
+// --- Roulette ---
+
+enum RouletteStatus {
+  WAITING
+  BETTING
+  SPINNING
+  RESULT
+  CLOSED
+}
+
+enum RoundStatus {
+  BETTING
+  SPINNING
+  RESULT
+}
+
+enum RouletteBetType {
+  STRAIGHT
+  SPLIT
+  DOZEN
+  COLUMN
+  RED_BLACK
+  ODD_EVEN
+}
+
+enum RouletteMode {
+  MANUAL
+  AUTO
+}
+
+model RouletteSession {
+  id              Int            @id @default(autoincrement())
+  status          RouletteStatus @default(WAITING)
+  mode            RouletteMode   @default(MANUAL)
+  autoIntervalSec Int?
+  createdBy       Int
+  createdAt       DateTime       @default(now())
+  closedAt        DateTime?
+  rounds          RouletteRound[]
+}
+
+model RouletteRound {
+  id            Int           @id @default(autoincrement())
+  sessionId     Int
+  session       RouletteSession @relation(fields: [sessionId], references: [id])
+  status        RoundStatus   @default(BETTING)
+  bettingEndsAt DateTime?
+  winningNumber Int?
+  adminOverride Int?
+  spinStartedAt DateTime?
+  resolvedAt    DateTime?
+  bets          RouletteBet[]
+  comments      RouletteComment[]
+  createdAt     DateTime      @default(now())
+}
+
+model RouletteBet {
+  id           Int             @id @default(autoincrement())
+  roundId      Int
+  round        RouletteRound   @relation(fields: [roundId], references: [id])
+  userId       Int
+  user         User            @relation(fields: [userId], references: [id])
+  betType      RouletteBetType
+  betValue     String
+  amount       Float
+  payout       Float
+  potentialWin Float
+  won          Boolean?
+  resolvedAt   DateTime?
+  placedAt     DateTime        @default(now())
+}
+
+model RouletteComment {
+  id        Int           @id @default(autoincrement())
+  roundId   Int
+  round     RouletteRound @relation(fields: [roundId], references: [id])
+  userId    Int
+  user      User          @relation(fields: [userId], references: [id])
+  text      String
+  imageUrl  String?
+  createdAt DateTime      @default(now())
 }

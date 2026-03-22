@@ -700,6 +700,19 @@ export default function MarketDetailPage() {
           )}
         </div>
         <h1 className="market-detail-title">{market.title}</h1>
+        {market.creatorUser && (
+          <div className="market-creator">
+            <span className="creator-label">Creato da</span>
+            <Link to={`/profile/${market.creatorUser.id}`} className="creator-link">
+              {market.creatorUser.avatarUrl ? (
+                <img src={getUploadUrl(market.creatorUser.avatarUrl)} className="creator-avatar" alt="" />
+              ) : (
+                <div className="avatar-placeholder" style={{ width: 22, height: 22, fontSize: 11 }}>{market.creatorUser.displayName?.[0]?.toUpperCase()}</div>
+              )}
+              <span>{market.creatorUser.displayName}</span>
+            </Link>
+          </div>
+        )}
         {market.description && <p className="market-detail-desc">{market.description}</p>}
         <div className="market-detail-stats">
           <div className="stat">

@@ -176,6 +176,11 @@
   margin-left: auto;
 }
 
+.market-creator-mini {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 /* Flash animation for odds update */
 @keyframes odds-flash {
   0% { background: rgba(181, 255, 77, 0.2); }

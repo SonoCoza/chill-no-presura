@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -168,6 +168,31 @@ function EditableDisplayName({ value, onSaved }) {
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
         </svg>
       </button>
+    </div>
+  );
+}
+
+function CreatedMarketsList({ userId }) {
+  const [markets, setMarkets] = useState([]);
+
+  useEffect(() => {
+    api.get('/markets').then(r => {
+      setMarkets(r.data.filter(m => m.createdBy === userId));
+    }).catch(() => {});
+  }, [userId]);
+
+  if (markets.length === 0) return <p className="text-secondary">Nessun pronostico creato</p>;
+
+  return (
+    <div className="created-markets-list">
+      {markets.map(m => (
+        <Link key={m.id} to={`/market/${m.id}`} className="created-market-item">
+          <span className={`market-status-dot status-${m.status?.toLowerCase()}`} />
+          <span className="created-market-title">{m.title}</span>
+          <span className="created-market-pool mono">{formatCurrency(m.totalPool || 0)}</span>
+          <span className="created-market-bets">{m.totalBets || 0} bet</span>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -372,7 +397,12 @@ export default function ProfilePage() {
       )}
 
       <div className="profile-bets-card">
-        <h3 className="section-title">Scommesse Recenti</h3>
+        <h3 className="section-title">Pronostici Creati</h3>
+        <CreatedMarketsList userId={parseInt(id)} />
+      </div>
+
+      <div className="profile-bets-card">
+        <h3 className="section-title">Scommesse Recenti ({profile.bets?.length || 0})</h3>
         {profile.bets?.length === 0 ? (
           <p className="text-secondary">Nessuna scommessa</p>
         ) : (

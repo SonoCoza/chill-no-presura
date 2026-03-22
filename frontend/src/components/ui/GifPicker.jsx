@@ -1,39 +1,72 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 
+const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPzR7Asnm41V_9mc';
+
 export const GifPicker = ({ onSelect, onClose }) => {
   const [query, setQuery] = useState('');
   const [gifs, setGifs] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState('');
+  const [nextPos, setNextPos] = useState('');
   const searchRef = useRef(null);
-  const API_KEY = import.meta.env.VITE_TENOR_API_KEY || 'AIzaSyAyimkuYQYF_FXVALexPzR7Asnm41V_9mc';
 
   const fetchGifs = useCallback(async (searchQuery, pos = '') => {
     setLoading(true);
     try {
-      const endpoint = searchQuery
-        ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(searchQuery)}&key=${API_KEY}&limit=20&pos=${pos}&media_filter=gif`
-        : `https://tenor.googleapis.com/v2/featured?key=${API_KEY}&limit=20&pos=${pos}&media_filter=gif`;
+      const API_KEY = import.meta.env.VITE_TENOR_API_KEY || TENOR_KEY;
+      const baseUrl = 'https://tenor.googleapis.com/v2';
+      const params = new URLSearchParams({
+        key: API_KEY,
+        limit: '20',
+        media_filter: 'gif',
+        contentfilter: 'medium',
+        ...(pos && { pos }),
+      });
 
-      const res = await fetch(endpoint);
+      const url = searchQuery
+        ? `${baseUrl}/search?q=${encodeURIComponent(searchQuery)}&${params}`
+        : `${baseUrl}/featured?${params}`;
+
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        console.error('Tenor API error:', res.status, await res.text());
+        setLoading(false);
+        return;
+      }
+
       const data = await res.json();
 
-      const newGifs = data.results?.map(r => ({
-        id: r.id,
-        url: r.media_formats?.gif?.url || r.media_formats?.tinygif?.url,
-        preview: r.media_formats?.tinygif?.url || r.media_formats?.gif?.url,
-        title: r.title,
-      })).filter(g => g.url) || [];
+      if (!data.results || data.results.length === 0) {
+        if (!pos) setGifs([]);
+        setLoading(false);
+        return;
+      }
+
+      const newGifs = data.results.map(r => {
+        const formats = r.media_formats || {};
+        const gifUrl =
+          formats.gif?.url ||
+          formats.mediumgif?.url ||
+          formats.tinygif?.url ||
+          formats.nanogif?.url ||
+          null;
+        const preview =
+          formats.tinygif?.url ||
+          formats.nanogif?.url ||
+          formats.gif?.url ||
+          null;
+        return { id: r.id, url: gifUrl, preview: preview || gifUrl, title: r.title || '' };
+      }).filter(g => g.url && g.preview);
 
       setGifs(prev => pos ? [...prev, ...newGifs] : newGifs);
-      setPage(data.next || '');
+      setNextPos(data.next || '');
     } catch (err) {
-      console.error('Tenor error:', err);
+      console.error('Tenor fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [API_KEY]);
+  }, []);
 
   // Carica trending all'apertura
   useEffect(() => {
@@ -109,10 +142,10 @@ export const GifPicker = ({ onSelect, onClose }) => {
                   />
                 </button>
               ))}
-              {page && (
+              {nextPos && (
                 <button
                   className="gif-load-more"
-                  onClick={() => fetchGifs(query, page)}
+                  onClick={() => fetchGifs(query, nextPos)}
                   disabled={loading}
                 >
                   {loading ? 'Caricamento...' : 'Carica altri'}

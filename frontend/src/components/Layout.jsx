@@ -102,6 +102,7 @@ export default function Layout({ children }) {
 
   const navItems = [
     { path: '/', label: 'Home', icon: '🏠' },
+    { path: '/roulette', label: 'Roulette', icon: '🎡' },
     { path: '/leaderboard', label: 'Classifica', icon: '🏆' },
     { path: `/profile/${user?.id}`, label: 'Profilo', icon: '👤' },
   ];

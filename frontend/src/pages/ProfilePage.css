@@ -395,6 +395,50 @@
   opacity: 0.5;
 }
 
+/* Created Markets List */
+.created-markets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.created-market-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.created-market-item:hover { border-color: rgba(255,255,255,0.12); }
+
+.market-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-open     { background: #b5ff4d; box-shadow: 0 0 6px rgba(181,255,77,0.5); }
+.status-closed   { background: #ff9500; }
+.status-resolved { background: #8b5cf6; }
+
+.created-market-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.created-market-pool {
+  font-size: 13px;
+  color: var(--accent-green);
+}
+.created-market-bets {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 @media (max-width: 640px) {
   .profile-header-card {
     flex-direction: column;

@@ -1,3 +1,28 @@
+/* Market Creator */
+.market-creator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.creator-label { font-size: 13px; color: #6b6b80; }
+.creator-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #c0c0d0;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.creator-link:hover { color: #b5ff4d; }
+.creator-avatar {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .market-detail-loading {
   max-width: 800px;
   margin: 0 auto;

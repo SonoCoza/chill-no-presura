@@ -78,6 +78,9 @@ export default function MarketCard({ market, index = 0 }) {
               <CountdownTimer closeAt={market.closeAt} />
             )}
             <span className="market-bets">{market.totalBets || market.entries?.length || 0} bet</span>
+            {market.creatorUser && (
+              <span className="market-creator-mini">da {market.creatorUser.displayName}</span>
+            )}
           </div>
         </div>
       </Link>
