@@ -192,8 +192,5 @@ cron.schedule('* * * * *', async () => {
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
   rouletteRoutes.bootstrapPersistentRoulette(io);
 });
