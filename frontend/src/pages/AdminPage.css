@@ -1413,3 +1413,80 @@
 .notif-preview-card.modal {
   border-left-color: var(--accent-violet);
 }
+
+/* --- Admin Roulette --- */
+.admin-roulette-panel h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+.admin-roulette-start,
+.admin-roulette-active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+.admin-session-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.admin-session-status .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+.admin-session-status .status-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+.admin-override-section h3 {
+  margin: 8px 0 8px;
+  font-size: 15px;
+}
+.override-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+.admin-number-grid {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 4px;
+}
+@media (max-width: 900px) {
+  .admin-number-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+.admin-num {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.admin-num.green { background: #0d5c2e; }
+.admin-num.red { background: #8b1c1c; }
+.admin-num.black { background: #1a1a1a; }
+.admin-num:hover {
+  transform: scale(1.06);
+}
+.admin-num.selected {
+  box-shadow: 0 0 0 2px var(--accent-green);
+  border-color: var(--accent-green);
+}
+.input-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+}

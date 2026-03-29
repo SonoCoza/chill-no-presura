@@ -160,9 +160,7 @@ model NotificationRecipient {
 
 enum RouletteStatus {
   WAITING
-  BETTING
-  SPINNING
-  RESULT
+  ACTIVE
   CLOSED
 }
 
@@ -181,60 +179,55 @@ enum RouletteBetType {
   ODD_EVEN
 }
 
-enum RouletteMode {
-  MANUAL
-  AUTO
-}
-
 model RouletteSession {
-  id              Int            @id @default(autoincrement())
-  status          RouletteStatus @default(WAITING)
-  mode            RouletteMode   @default(MANUAL)
-  autoIntervalSec Int?
-  createdBy       Int
-  createdAt       DateTime       @default(now())
-  closedAt        DateTime?
-  rounds          RouletteRound[]
+  id          Int             @id @default(autoincrement())
+  status      RouletteStatus  @default(WAITING)
+  intervalSec Int             @default(20)
+  createdBy   Int
+  createdAt   DateTime        @default(now())
+  closedAt    DateTime?
+  rounds      RouletteRound[]
 }
 
 model RouletteRound {
-  id            Int           @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   sessionId     Int
-  session       RouletteSession @relation(fields: [sessionId], references: [id])
-  status        RoundStatus   @default(BETTING)
+  session       RouletteSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roundNumber   Int
+  status        RoundStatus     @default(BETTING)
+  phase         String          @default("BETTING")
   bettingEndsAt DateTime?
-  winningNumber Int?
   adminOverride Int?
-  spinStartedAt DateTime?
+  winningNumber Int?
   resolvedAt    DateTime?
+  createdAt     DateTime        @default(now())
   bets          RouletteBet[]
   comments      RouletteComment[]
-  createdAt     DateTime      @default(now())
 }
 
 model RouletteBet {
-  id           Int             @id @default(autoincrement())
-  roundId      Int
-  round        RouletteRound   @relation(fields: [roundId], references: [id])
-  userId       Int
-  user         User            @relation(fields: [userId], references: [id])
-  betType      RouletteBetType
-  betValue     String
-  amount       Float
-  payout       Float
-  potentialWin Float
-  won          Boolean?
-  resolvedAt   DateTime?
-  placedAt     DateTime        @default(now())
+  id            Int             @id @default(autoincrement())
+  roundId       Int
+  round         RouletteRound   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId        Int
+  user          User            @relation(fields: [userId], references: [id])
+  betType       RouletteBetType
+  betValue      String
+  amount        Float
+  totalPayout   Float
+  potentialWin  Float
+  won           Boolean?
+  resolvedAt    DateTime?
+  placedAt      DateTime        @default(now())
 }
 
 model RouletteComment {
   id        Int           @id @default(autoincrement())
   roundId   Int
-  round     RouletteRound @relation(fields: [roundId], references: [id])
+  round     RouletteRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
   userId    Int
   user      User          @relation(fields: [userId], references: [id])
-  text      String
+  text      String?
   imageUrl  String?
   createdAt DateTime      @default(now())
 }

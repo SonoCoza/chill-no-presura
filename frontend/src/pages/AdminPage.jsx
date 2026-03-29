@@ -1336,11 +1336,151 @@ function NotificationsTab() {
   );
 }
 
+const ROULETTE_RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+function AdminRouletteTab() {
+  const [active, setActive] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [intervalSec, setIntervalSec] = useState(20);
+  const [overrideNum, setOverrideNum] = useState(null);
+
+  useEffect(() => {
+    api
+      .get('/roulette/state')
+      .then(({ data }) => {
+        if (data.active && data.session) {
+          setActive(true);
+          setSessionId(data.session.id);
+          setIntervalSec(data.session.intervalSec ?? 20);
+        } else {
+          setActive(false);
+          setSessionId(null);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const start = async () => {
+    try {
+      const { data } = await api.post('/roulette/admin/start', { intervalSec });
+      setSessionId(data.sessionId);
+      setActive(true);
+      setOverrideNum(null);
+      toast.success('Sessione avviata');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Errore avvio sessione');
+    }
+  };
+
+  const stop = async () => {
+    try {
+      await api.post('/roulette/admin/stop', {});
+      setActive(false);
+      setSessionId(null);
+      setOverrideNum(null);
+      toast.success('Sessione chiusa');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Errore chiusura');
+    }
+  };
+
+  const setOverride = async (n) => {
+    try {
+      await api.put('/roulette/admin/override', { number: n });
+      setOverrideNum(n);
+      toast.success(`Numero forzato: ${n} (invisibile agli utenti)`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Errore override');
+    }
+  };
+
+  const clearOverride = async () => {
+    try {
+      await api.put('/roulette/admin/override', { number: -1 });
+      setOverrideNum(null);
+      toast.success('Override rimosso — prossimo risultato casuale');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Errore');
+    }
+  };
+
+  return (
+    <div className="admin-tab">
+      <div className="admin-roulette-panel">
+        <h2>🎡 Controllo Roulette</h2>
+
+        {!active ? (
+          <div className="admin-roulette-start">
+            <div className="form-group">
+              <label>Durata fase puntate (secondi)</label>
+              <input
+                className="input-field"
+                type="number"
+                value={intervalSec}
+                onChange={(e) => setIntervalSec(parseInt(e.target.value, 10) || 20)}
+                min={10}
+                max={120}
+              />
+              <p className="input-hint">
+                Il ciclo sarà: {intervalSec}s puntate + 5s last call + 8s rotazione + 4s risultato ={' '}
+                {intervalSec + 17}s per giro
+              </p>
+            </div>
+            <button type="button" className="btn-primary" onClick={start}>
+              ▶ Avvia Sessione
+            </button>
+          </div>
+        ) : (
+          <div className="admin-roulette-active">
+            <div className="admin-session-status">
+              <span className="status-dot active" />
+              <span>
+                Sessione attiva {sessionId ? `#${sessionId}` : ''} — ciclo {intervalSec + 17}s
+              </span>
+            </div>
+
+            <div className="admin-override-section">
+              <h3>Forza numero vincente</h3>
+              <p className="override-hint">
+                {overrideNum !== null
+                  ? `✓ Forzato: ${overrideNum} — verrà usato nel prossimo risultato`
+                  : '● Casuale — nessun override impostato'}
+              </p>
+              <div className="admin-number-grid">
+                {Array.from({ length: 37 }, (_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`admin-num ${i === 0 ? 'green' : ROULETTE_RED_NUMBERS.includes(i) ? 'red' : 'black'} ${overrideNum === i ? 'selected' : ''}`}
+                    onClick={() => (overrideNum === i ? clearOverride() : setOverride(i))}
+                  >
+                    {i}
+                  </button>
+                ))}
+              </div>
+              {overrideNum !== null && (
+                <button type="button" className="btn-small" onClick={clearOverride} style={{ marginTop: 12 }}>
+                  ✕ Rimuovi override (torna casuale)
+                </button>
+              )}
+
+              <button type="button" className="btn-danger" onClick={stop} style={{ marginTop: 24 }}>
+                ⏹ Chiudi Sessione
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---- MAIN ADMIN PAGE ----
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
   { key: 'users', label: 'Utenti', icon: '👥' },
   { key: 'markets', label: 'Mercati', icon: '🎲' },
+  { key: 'roulette', label: 'Roulette', icon: '🎡' },
   { key: 'notifications', label: 'Notifiche', icon: '🔔' },
   { key: 'transactions', label: 'Transazioni', icon: '💰' },
   { key: 'logs', label: 'Log', icon: '📋' },
@@ -1370,6 +1510,7 @@ export default function AdminPage() {
         {activeTab === 'dashboard' && <DashboardTab />}
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'markets' && <MarketsTab />}
+        {activeTab === 'roulette' && <AdminRouletteTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'transactions' && <TransactionsTab />}
         {activeTab === 'logs' && <LogsTab />}
