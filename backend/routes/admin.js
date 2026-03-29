@@ -289,11 +289,8 @@ router.delete('/users/:id', async (req, res) => {
     await prisma.betEntry.deleteMany({ where: { userId } });
     await prisma.comment.deleteMany({ where: { userId } });
 
-    // Roulette data if tables exist
-    try {
-      await prisma.rouletteBet.deleteMany({ where: { userId } });
-      await prisma.rouletteComment.deleteMany({ where: { userId } });
-    } catch { /* tables may not exist yet */ }
+    await prisma.rouletteComment.deleteMany({ where: { userId } });
+    await prisma.rouletteBet.deleteMany({ where: { userId } });
 
     // 4. Finalmente elimina l'utente
     await prisma.user.delete({ where: { id: userId } });

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
+import { useAuthStore } from '../store/authStore';
 
 const AuthContext = createContext(null);
 
@@ -15,17 +16,20 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem('accessToken');
       if (!token) {
         setLoading(false);
+        useAuthStore.getState().sync();
         return;
       }
       const { data } = await api.get('/auth/me');
       setUser(data);
       localStorage.setItem('user', JSON.stringify(data));
+      useAuthStore.getState().sync();
     } catch {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
       setUser(null);
     } finally {
       setLoading(false);
+      useAuthStore.getState().sync();
     }
   }, []);
 
@@ -38,6 +42,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
+    useAuthStore.getState().sync();
     return data;
   };
 
@@ -45,6 +50,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     setUser(null);
+    useAuthStore.getState().sync();
   };
 
   const changePassword = async (newPassword, confirmPassword) => {
@@ -52,6 +58,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
+    useAuthStore.getState().sync();
     return data;
   };
 
@@ -59,6 +66,7 @@ export function AuthProvider({ children }) {
     setUser(prev => {
       const updated = { ...prev, balance: newBalance };
       localStorage.setItem('user', JSON.stringify(updated));
+      useAuthStore.getState().sync();
       return updated;
     });
   };

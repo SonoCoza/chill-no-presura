@@ -12,7 +12,7 @@ import MarketDetailPage from './pages/MarketDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import AdminPage from './pages/AdminPage';
-import RoulettePage from './pages/Roulette/RoulettePage';
+import RoulettePage from './pages/Roulette/Roulette';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
