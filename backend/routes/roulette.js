@@ -498,4 +498,34 @@ function bootstrapPersistentRoulette(io) {
 }
 
 router.bootstrapPersistentRoulette = bootstrapPersistentRoulette;
+// Auto-avvia la sessione all'avvio del server
+async function bootstrapPersistentRoulette(io) {
+  try {
+    // Chiudi sessioni vecchie aperte
+    await prisma.rouletteSession.updateMany({
+      where: { status: 'ACTIVE' },
+      data: { status: 'CLOSED', closedAt: new Date() },
+    });
+
+    // Crea nuova sessione persistente
+    const session = await prisma.rouletteSession.create({
+      data: { intervalSec: 20, createdBy: 1, status: 'ACTIVE' },
+    });
+
+    state.sessionId = session.id;
+    state.sessionActive = true;
+    state.intervalSec = 20;
+    state.roundNumber = 0;
+
+    console.log(`[ROULETTE] Sessione auto-avviata: #${session.id}`);
+
+    // Avvia primo round dopo 3 secondi
+    setTimeout(() => startBetting(prisma, io), 3000);
+  } catch (err) {
+    console.error('[ROULETTE] Bootstrap error:', err);
+  }
+}
+
+module.exports = router;
+module.exports.bootstrapPersistentRoulette = bootstrapPersistentRoulette;
 module.exports = router;
