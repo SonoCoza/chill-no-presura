@@ -8,7 +8,7 @@ import './AdminRoulette.css';
 export default function AdminRoulette() {
   const { token, sync } = useAuthStore();
 
-  const [active, setActive] = useState(false);
+  const [ready, setReady] = useState(false);
   const [intervalSec, setIntervalSec] = useState(20);
   const [overrideNum, setOverrideNum] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -17,42 +17,33 @@ export default function AdminRoulette() {
     sync();
   }, [sync]);
 
-  useEffect(() => {
+  const loadState = () => {
     if (!token) return;
     axios
       .get('/api/roulette/state', { headers: { Authorization: `Bearer ${token}` } })
       .then(({ data }) => {
-        setActive(!!data.active);
+        setReady(!!data.active);
+        if (data.intervalSec) setIntervalSec(data.intervalSec);
       })
-      .catch(console.error);
-  }, [token, sync]);
-
-  const startSession = async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      await axios.post('/api/roulette/admin/start', { intervalSec }, { headers: { Authorization: `Bearer ${token}` } });
-      setActive(true);
-      setOverrideNum(null);
-      toast.success('Sessione roulette avviata!');
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Errore');
-    } finally {
-      setLoading(false);
-    }
+      .catch(() => setReady(false));
   };
 
-  const stopSession = async () => {
-    if (!confirm('Chiudere la sessione roulette?')) return;
+  useEffect(() => {
+    loadState();
+  }, [token, sync]);
+
+  const saveInterval = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      await axios.post('/api/roulette/admin/stop', {}, { headers: { Authorization: `Bearer ${token}` } });
-      setActive(false);
-      setOverrideNum(null);
-      toast.success('Sessione chiusa');
+      await axios.put(
+        '/api/roulette/admin/interval',
+        { intervalSec },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Durata puntate: ${intervalSec}s (vale dal prossimo giro)`);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Errore');
+      toast.error(err.response?.data?.error || 'Errore salvataggio');
     } finally {
       setLoading(false);
     }
@@ -62,7 +53,11 @@ export default function AdminRoulette() {
     const num = overrideNum === n ? -1 : n;
     if (!token) return;
     try {
-      await axios.put('/api/roulette/admin/override', { number: num }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(
+        '/api/roulette/admin/override',
+        { number: num },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setOverrideNum(num >= 0 ? num : null);
       toast.success(num >= 0 ? `Override: ${num}` : 'Override rimosso', { duration: 1500 });
     } catch (err) {
@@ -79,14 +74,31 @@ export default function AdminRoulette() {
     <div className="admin-roulette">
       <h2>🎡 Controllo Roulette</h2>
 
-      {!active ? (
+      {!ready ? (
         <div className="ar-start-panel">
+          <p className="ar-desc ar-warn">
+            La roulette non risulta attiva. Avvia il backend e assicurati che il database sia aggiornato
+            (<code>npx prisma db push</code> nella cartella <code>backend</code>). Serve almeno un utente nel
+            DB.
+          </p>
+          <button type="button" className="btn-primary" onClick={loadState} disabled={!token}>
+            Ricarica stato
+          </button>
+        </div>
+      ) : (
+        <div className="ar-active-panel">
+          <div className="ar-status-bar">
+            <span className="ar-dot" />
+            <span>Roulette sempre attiva — ciclo automatico continuo</span>
+          </div>
+
           <p className="ar-desc">
-            Avvia una sessione di roulette live. Tutti gli utenti potranno partecipare in tempo reale.
+            La sessione parte automaticamente all&apos;avvio del server. Qui imposti solo la durata delle puntate e,
+            se vuoi, il numero forzato.
           </p>
 
           <div className="form-group">
-            <label>Durata fase puntate</label>
+            <label>Durata fase puntate (secondi)</label>
             <div className="interval-row">
               {[15, 20, 30, 45, 60].map((s) => (
                 <button
@@ -107,22 +119,14 @@ export default function AdminRoulette() {
                 max={120}
                 onChange={(e) => setIntervalSec(parseInt(e.target.value, 10) || 20)}
               />
+              <button type="button" className="btn-primary" onClick={saveInterval} disabled={loading}>
+                Salva
+              </button>
             </div>
             <p className="input-hint">
-              Ciclo totale: {intervalSec}s puntate + 5s last call + 8s ruota + 4s risultato ={' '}
-              <strong>{intervalSec + 17}s</strong> per giro
+              Ciclo: {intervalSec}s puntate + 5s last call + 8s ruota + 4s risultato = <strong>{intervalSec + 17}s</strong>{' '}
+              per giro (dopo &quot;Salva&quot;, dal round successivo).
             </p>
-          </div>
-
-          <button type="button" className="btn-primary btn-large" onClick={startSession} disabled={loading}>
-            {loading ? 'Avvio...' : '▶ Avvia Sessione'}
-          </button>
-        </div>
-      ) : (
-        <div className="ar-active-panel">
-          <div className="ar-status-bar">
-            <span className="ar-dot" />
-            <span>Sessione attiva — ciclo {intervalSec + 17}s</span>
           </div>
 
           <div className="ar-override-section">
@@ -147,10 +151,6 @@ export default function AdminRoulette() {
               ))}
             </div>
           </div>
-
-          <button type="button" className="btn-danger btn-large" onClick={stopSession} disabled={loading}>
-            {loading ? 'Chiusura...' : '⏹ Chiudi Sessione'}
-          </button>
         </div>
       )}
     </div>

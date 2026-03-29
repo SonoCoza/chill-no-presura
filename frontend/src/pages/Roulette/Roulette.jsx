@@ -318,7 +318,7 @@ export default function RoulettePage() {
               <div className="wheel-placeholder">
                 <div className="wheel-placeholder-icon">🎡</div>
                 <p>Nessuna sessione</p>
-                <p className="wp-sub">L&apos;admin deve avviare una sessione</p>
+                <p className="wp-sub">Controlla che il server sia avviato e il DB aggiornato (prisma db push)</p>
               </div>
             )}
           </div>

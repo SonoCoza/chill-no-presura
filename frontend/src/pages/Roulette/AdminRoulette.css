@@ -14,6 +14,16 @@
   margin-bottom: 24px;
   line-height: 1.6;
 }
+.ar-warn {
+  color: var(--accent-orange, #ff9500);
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.25);
+  border-radius: 10px;
+  padding: 14px;
+}
+.ar-warn code {
+  font-size: 12px;
+}
 
 .interval-row {
   display: flex;

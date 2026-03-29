@@ -32,8 +32,31 @@ function emit(io, event, data) {
 
 router.get('/state', authenticate, async (req, res) => {
   try {
-    if (!state.sessionActive || !state.roundId) {
+    if (!state.sessionActive) {
       return res.json({ active: false, phase: 'IDLE' });
+    }
+
+    const historyBase = await prisma.rouletteRound.findMany({
+      where: { sessionId: state.sessionId, winningNumber: { not: null } },
+      orderBy: { resolvedAt: 'desc' },
+      take: 20,
+      select: { id: true, winningNumber: true, roundNumber: true },
+    });
+
+    if (!state.roundId) {
+      return res.json({
+        active: true,
+        phase: state.phase,
+        sessionId: state.sessionId,
+        intervalSec: state.intervalSec,
+        roundId: null,
+        roundNumber: state.roundNumber,
+        bettingEndsAt: null,
+        timeLeftSec: 0,
+        bets: [],
+        comments: [],
+        history: historyBase,
+      });
     }
 
     const round = await prisma.rouletteRound.findUnique({
@@ -59,18 +82,13 @@ router.get('/state', authenticate, async (req, res) => {
 
     const publicBets = (round?.bets || []).filter((b) => !b.user?.isAdmin);
 
-    const history = await prisma.rouletteRound.findMany({
-      where: { sessionId: state.sessionId, winningNumber: { not: null } },
-      orderBy: { resolvedAt: 'desc' },
-      take: 20,
-      select: { id: true, winningNumber: true, roundNumber: true },
-    });
-
     const timeLeftMs = state.bettingEndsAt ? Math.max(0, state.bettingEndsAt - Date.now()) : 0;
 
     res.json({
       active: true,
       phase: state.phase,
+      sessionId: state.sessionId,
+      intervalSec: state.intervalSec,
       roundId: state.roundId,
       roundNumber: state.roundNumber,
       bettingEndsAt: state.bettingEndsAt ? new Date(state.bettingEndsAt).toISOString() : null,
@@ -90,7 +108,7 @@ router.get('/state', authenticate, async (req, res) => {
         },
       })),
       comments: round?.comments || [],
-      history,
+      history: historyBase,
     });
   } catch (err) {
     console.error('roulette/state error:', err);
@@ -118,8 +136,11 @@ router.post('/bet', authenticate, async (req, res) => {
     const userId = req.user.id;
     const betAmount = parseFloat(amount);
 
-    if (!state.sessionActive || !state.roundId) {
-      return res.status(400).json({ error: 'Nessuna sessione attiva' });
+    if (!state.sessionActive) {
+      return res.status(400).json({ error: 'Roulette non disponibile' });
+    }
+    if (!state.roundId) {
+      return res.status(400).json({ error: 'Round in avvio, riprova tra un secondo' });
     }
     if (!['BETTING', 'LAST_CALL'].includes(state.phase)) {
       return res.status(400).json({ error: 'Le puntate sono chiuse' });
@@ -236,72 +257,21 @@ router.post('/comment', authenticate, async (req, res) => {
   }
 });
 
-router.post('/admin/start', authenticate, requireAdmin, async (req, res) => {
+router.put('/admin/interval', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { intervalSec = 20 } = req.body;
-
-    if (state.timer) {
-      clearTimeout(state.timer);
-      state.timer = null;
+    const raw = parseInt(req.body.intervalSec, 10);
+    const intervalSec = Math.min(120, Math.max(10, Number.isNaN(raw) ? 20 : raw));
+    if (!state.sessionId) {
+      return res.status(503).json({ error: 'Roulette non ancora pronta — riavvia il server' });
     }
-    if (state.sessionId) {
-      await prisma.rouletteSession.update({
-        where: { id: state.sessionId },
-        data: { status: 'CLOSED', closedAt: new Date() },
-      });
-    }
-
-    const session = await prisma.rouletteSession.create({
-      data: { intervalSec, createdBy: req.user.id, status: 'ACTIVE' },
+    await prisma.rouletteSession.update({
+      where: { id: state.sessionId },
+      data: { intervalSec },
     });
-
-    state.sessionId = session.id;
-    state.sessionActive = true;
     state.intervalSec = intervalSec;
-    state.roundId = null;
-    state.roundNumber = 0;
-    state.phase = 'IDLE';
-
-    const io = getIo(req);
-    emit(io, 'roulette:session_started', { sessionId: session.id, intervalSec });
-
-    state.timer = setTimeout(() => startBetting(prisma, io), 2000);
-
-    res.json({ success: true, sessionId: session.id });
+    res.json({ success: true, intervalSec });
   } catch (err) {
-    console.error('admin/start error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/admin/stop', authenticate, requireAdmin, async (req, res) => {
-  try {
-    if (state.timer) {
-      clearTimeout(state.timer);
-      state.timer = null;
-    }
-    if (state.sessionId) {
-      await prisma.rouletteSession.update({
-        where: { id: state.sessionId },
-        data: { status: 'CLOSED', closedAt: new Date() },
-      });
-    }
-
-    state = {
-      sessionId: null,
-      sessionActive: false,
-      roundId: null,
-      roundNumber: 0,
-      phase: 'IDLE',
-      bettingEndsAt: null,
-      intervalSec: 20,
-      timer: null,
-    };
-
-    const io = getIo(req);
-    emit(io, 'roulette:session_closed', {});
-    res.json({ success: true });
-  } catch (err) {
+    console.error('admin/interval error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -421,6 +391,8 @@ async function showResult(prismaClient, io, roundId, winningNumber) {
     include: { bets: { include: { user: { select: { id: true, isAdmin: true } } } } },
   });
 
+  if (!round) return;
+
   const results = [];
 
   for (const bet of round.bets) {
@@ -477,4 +449,53 @@ async function showResult(prismaClient, io, roundId, winningNumber) {
   state.timer = setTimeout(() => startBetting(prismaClient, io), T_RESULT);
 }
 
+function bootstrapPersistentRoulette(io) {
+  (async () => {
+    try {
+      if (state.timer) {
+        clearTimeout(state.timer);
+        state.timer = null;
+      }
+
+      const creator =
+        (await prisma.user.findFirst({ where: { isAdmin: true }, orderBy: { id: 'asc' } })) ||
+        (await prisma.user.findFirst({ orderBy: { id: 'asc' } }));
+
+      if (!creator) {
+        console.error('[roulette] Nessun utente nel database: impossibile creare la sessione.');
+        return;
+      }
+
+      await prisma.rouletteSession.updateMany({
+        where: { status: 'ACTIVE' },
+        data: { status: 'CLOSED', closedAt: new Date() },
+      });
+
+      const session = await prisma.rouletteSession.create({
+        data: {
+          intervalSec: 20,
+          createdBy: creator.id,
+          status: 'ACTIVE',
+        },
+      });
+
+      state.sessionId = session.id;
+      state.sessionActive = true;
+      state.intervalSec = session.intervalSec;
+      state.roundId = null;
+      state.roundNumber = 0;
+      state.phase = 'IDLE';
+      state.bettingEndsAt = null;
+
+      emit(io, 'roulette:session_started', { sessionId: session.id, intervalSec: session.intervalSec });
+      state.timer = setTimeout(() => startBetting(prisma, io), 1500);
+      console.log(`[roulette] Sessione persistente avviata (id=${session.id})`);
+    } catch (err) {
+      console.error('[roulette] Avvio sessione fallito:', err.message);
+      console.error('[roulette] Esegui: cd backend && npx prisma db push');
+    }
+  })();
+}
+
+router.bootstrapPersistentRoulette = bootstrapPersistentRoulette;
 module.exports = router;
